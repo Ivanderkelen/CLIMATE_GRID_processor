@@ -14,8 +14,10 @@ dependencies:
   - ca-certificates=2024.9.24=h06a4308_0
   - cartopy=0.22.0=py312h526ad5a_0
   - certifi=2024.8.30=py312h06a4308_0
+  - cffi=1.17.1=py312h1fdaa30_0
   - comm=0.2.1=py312h06a4308_0
   - contourpy=1.2.0=py312hdb19cb5_0
+  - cryptography=43.0.0=py312hdda0065_0
   - cycler=0.11.0=pyhd3eb1b0_0
   - debugpy=1.6.7=py312h6a678d5_0
   - decorator=5.1.1=pyhd3eb1b0_0
@@ -68,6 +70,7 @@ dependencies:
   - numpy-base=1.26.4=py312h0da6c21_0
   - openjpeg=2.5.2=he7f1fd0_0
   - openssl=3.0.15=h5eee18b_0
+  - oracledb=2.1.1=py312h5eee18b_0
   - packaging=24.1=py312h06a4308_0
   - pandas=2.2.2=py312h526ad5a_0
   - parso=0.8.3=pyhd3eb1b0_0
@@ -81,6 +84,7 @@ dependencies:
   - psutil=5.9.0=py312h5eee18b_0
   - ptyprocess=0.7.0=pyhd3eb1b0_2
   - pure_eval=0.2.2=pyhd3eb1b0_0
+  - pycparser=2.21=pyhd3eb1b0_0
   - pygments=2.15.1=py312h06a4308_1
   - pyparsing=3.1.2=py312h06a4308_0
   - pyproj=3.6.1=py312h6268720_0

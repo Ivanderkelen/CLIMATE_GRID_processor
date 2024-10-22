@@ -1,14 +1,37 @@
-# CLIMATE GRID preprocessor
+# Scripts to Preprocess CLIMATE_GRID Dataset
 
-Convert the downloaded CLIMATE_GRID dataset from RMI into netcdf data format
-The Climate grid dataset can be downloaded here: https://opendata.meteo.be/download (free for academics). 
-
-This repository contains a python script to convert the dataset from .csv to NetCDF format with the necessary attributes.
+This repository contains a collection of Python scripts to:
+1. Download the CLIMATE_GRID dataset from the RMI Oracle database as vector data and store it as CSV.
+2. Convert the dataset to NetCDF format with the necessary attributes.
+3. Remap the dataset to a self-defined lat-lon grid.
 
 (c) Inne Vanderkelen, Bert van Schaeybroeck, Nicolas Ghilain
-October 2024
+June 2024
 
-## 0. Requirements
+## Overview of Files
+
+### Scripts
+- **`preprocess_CLIMATE_GRID.py`**:
+  - Connects to the RMI Oracle database and downloads the CLIMATE_GRID data.
+  - Converts and saves the data as a NetCDF file.
+- **`remap_CLIMATE_GRID_to_latlon.py`**:
+  - Remaps the projected (raw) CLIMATE_GRID NetCDF data to a lat/lon grid.
+  - The target grid can be user-defined within the script.
+
+### Data Files
+- **`grid_5kmx5km.csv`**:
+  - Contains pixel lat and lon variables to transpose to a user-defined grid.
+  - Used by `preprocess_CLIMATE_GRID.py`.
+- **`CLIMATE_GRID_meta.csv`**:
+  - Contains the variable names and units for the CLIMATE_GRID dataset.
+  - Used to write the NetCDF file by `preprocess_CLIMATE_GRID.py`.
+- **`lambert_coordinates_full_climate_grid.csv`**:
+  - Lists pixel IDs and corresponding x, y coordinates in LAMBERT2008.
+  - Used by `preprocess_CLIMATE_GRID.py`.
+
+## Usage
+
+0. **Requirements**
 
 Installed version of python (eg through a conda installation, possible with [miniconda](https://docs.anaconda.com/miniconda/) or [Anaconda Navigator](https://www.anaconda.com/download) )
 
@@ -22,12 +45,14 @@ conda env create -f environment.yml
 conda activate env_climategrid
 ```
 
-## 1. Running the script
+1. **Download and Preprocess the Data:**
+   ```bash
+   python preprocess_CLIMATE_GRID.py
+    ```
 
-Run the script **[convert_climate_grid_to_netcdf.py](./convert_climate_grid_to_netcdf.py)** as follows: 
+2. **Remapping the netcdf files**
+Open [remap_CLIMATE_GRID_to_latlon.py](./remap_CLIMATE_GRID_to_latlon.py) and do user adjustments (grid, metadata etc). Then execute the script: 
 
-
-```
-python convert_climate_grid_to_netcdf.py
-```
-
+   ```bash
+   python remap_CLIMATE_GRID_to_latlon.py
+    ```
