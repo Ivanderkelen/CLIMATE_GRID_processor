@@ -1,5 +1,4 @@
-# CLIMATE GRID preprocessor
-
+# Climate Grid to NetCDF
 Convert the downloaded CLIMATE_GRID dataset from RMI into netcdf data format
 The Climate grid dataset can be downloaded here: https://opendata.meteo.be/download (free for academics). 
 
