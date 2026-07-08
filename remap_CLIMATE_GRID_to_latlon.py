@@ -10,7 +10,6 @@ Uses CDO regridding.
 I. Vanderkelen, June 2024
 """
 
-
 # load modules
 import xarray as xr
 import os
@@ -88,6 +87,14 @@ directory_grid = str(directory) + "/regridded/" + gridname + "/"
 
 if not os.path.exists(directory_grid):
     os.makedirs(directory_grid)
+
+# remove content from dicrectory. 
+files = list(
+    Path(directory_grid).glob("*.nc")
+)  # Select all the netCDF files for the variable in the directory
+
+for f in files:
+    os.remove(os.path.join(directory_grid, f))
 
 for variable in variables:
     files = list(

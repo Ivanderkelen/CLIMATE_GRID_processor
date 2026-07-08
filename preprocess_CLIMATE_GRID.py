@@ -23,6 +23,7 @@ import pandas as pd
 import numpy as np
 import getpass
 import oracledb
+from pathlib import Path
 import xarray as xr
 from datetime import date
 import cartopy.crs as ccrs
@@ -31,11 +32,12 @@ import cartopy.crs as ccrs
 
 
 # User option: download raw oracle data. If False, load intermediate .csv files
-download_from_oracle = False  # if True, has to be executed on kili
+download_from_oracle = True  # if True, has to be executed on kili
 
 # User settings
 data_dir = "/mnt/HDS_CLIMATE/CLIMATE/CLIMATE_GRID/"
 dataset = "CLIMATE_GRID"
+
 variables = [
     "EVAPOTRANS_REF",
     "SUN_INT",
@@ -55,14 +57,26 @@ variables = [
     "TEMP_MIN",
 ]
 
+
+
+
 # Initial and end year for the data request
 init_yr = 1950
-end_yr = 2023
+end_yr = 2026
 
 if download_from_oracle:
     # Oracle database connection - user interference only once
     username = getpass.getpass("Enter oracle username: ")
     password = getpass.getpass("Enter password: ")
+
+
+# remove existing netcdf files
+files = list(
+    Path(data_dir).glob("*.nc")
+)  # Select all the netCDF files for the variable in the directory
+
+for f in files:
+    os.remove(os.path.join(data_dir, f))
 
 # Process data for each variable
 for variable in variables:
