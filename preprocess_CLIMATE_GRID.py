@@ -380,5 +380,22 @@ for variable in variables:
     )
 
     # Export to netcdf
-    ds.to_netcdf(data_dir + filename_out, encoding={"time": {"dtype": "int32"}})
-    print(f"Saved as: {data_dir + filename_out}")
+   # Use a finite sentinel as the missing-value flag instead of NaN.
+    # IEEE NaN as _FillValue causes CDO's remapping/statistics routines to silently
+    # propagate NaN through area-weighted sums (NaN + x = NaN), producing all-NaN
+    # output even though missing cells are correctly counted. -9e33 is CDO's own
+    # internal default missing value, so this also makes the files "native" to CDO.
+    fillval = -9e33
+
+    encoding = {
+        "time": {"dtype": "int32"},
+        variable: {"_FillValue": fillval},
+        "lat": {"_FillValue": fillval},
+        "lon": {"_FillValue": fillval},
+        "lat_bounds": {"_FillValue": fillval},
+        "lon_bounds": {"_FillValue": fillval},
+    }
+
+    # Export to netcdf
+    ds.to_netcdf(data_dir + filename_out, encoding=encoding)
+    print(f"Saved as: {data_dir + filename_out}")  
