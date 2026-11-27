@@ -165,30 +165,47 @@ for variable in variables:
     df_full_grid = pd.read_csv(
         "lambert_coordinates_full_climate_grid.csv"
     )  # Made using R script by Michel Journee
-    lambert_x_grid_raw = df_full_grid["x1"].unique()
-    lambert_y_grid_raw = df_full_grid["x2"].unique()
+    lambert_x_grid_raw = np.sort(df_full_grid["x1"].unique())
+    lambert_y_grid_raw = np.sort(df_full_grid["x2"].unique())
 
-    # Cut this grid to bounding box including grid cells from CLIMATE_GRID
+    # Grid spacing (5000 m) and a half-cell tolerance
+    dx = np.median(np.diff(lambert_x_grid_raw))
+    dy = np.median(np.diff(lambert_y_grid_raw))
+    tol_x, tol_y = dx / 2, dy / 2
+
+    # Cut this grid to bounding box including grid cells from CLIMATE_GRID.
+    # The half-cell tolerance is needed because the pixel coordinates in
+    # grid_5kmx5km.csv are rounded (e.g. 6218014.18 vs 6218014.1799), which
+    # otherwise drops the southernmost row of the grid.
     lambert_x_grid = lambert_x_grid_raw[
-        (lambert_x_grid_raw >= df_coords_points["LAMBERT_X"].min())
-        & (lambert_x_grid_raw <= df_coords_points["LAMBERT_X"].max())
+        (lambert_x_grid_raw >= df_coords_points["LAMBERT_X"].min() - tol_x)
+        & (lambert_x_grid_raw <= df_coords_points["LAMBERT_X"].max() + tol_x)
     ]
     lambert_y_grid = lambert_y_grid_raw[
-        (lambert_y_grid_raw >= df_coords_points["LAMBERT_Y"].min())
-        & (lambert_y_grid_raw <= df_coords_points["LAMBERT_Y"].max())
+        (lambert_y_grid_raw >= df_coords_points["LAMBERT_Y"].min() - tol_y)
+        & (lambert_y_grid_raw <= df_coords_points["LAMBERT_Y"].max() + tol_y)
     ]
 
-    # Find the nearest index in the lons and lats grids and add this to coordinates dataframe
-    def find_nearest(array, value):
-        idx = (np.abs(array - value)).argmin()
-        return idx
+    # Find the nearest index in the x and y grids (vectorised) and add this to coordinates dataframe
+    xi = np.abs(
+        lambert_x_grid[None, :] - df_coords_points["LAMBERT_X"].values[:, None]
+    ).argmin(axis=1)
+    yi = np.abs(
+        lambert_y_grid[None, :] - df_coords_points["LAMBERT_Y"].values[:, None]
+    ).argmin(axis=1)
+    df_coords_points["LAMBERT_X_INDEX"] = xi
+    df_coords_points["LAMBERT_Y_INDEX"] = yi
 
-    df_coords_points["LAMBERT_X_INDEX"] = df_coords_points["LAMBERT_X"].apply(
-        lambda x: find_nearest(lambert_x_grid, x)
-    )
-    df_coords_points["LAMBERT_Y_INDEX"] = df_coords_points["LAMBERT_Y"].apply(
-        lambda x: find_nearest(lambert_y_grid, x)
-    )
+    # Safety checks: fail loudly instead of silently corrupting the grid
+    assert (
+        np.abs(lambert_x_grid[xi] - df_coords_points["LAMBERT_X"]) < tol_x
+    ).all(), "X snapping too far"
+    assert (
+        np.abs(lambert_y_grid[yi] - df_coords_points["LAMBERT_Y"]) < tol_y
+    ).all(), "Y snapping too far"
+    assert not df_coords_points.duplicated(
+        ["LAMBERT_X_INDEX", "LAMBERT_Y_INDEX"]
+    ).any(), "Pixel collision"
 
     print(f"Converting to netcdf: {variable}")
 
@@ -295,61 +312,43 @@ for variable in variables:
     # add lat and lon bounds (necessary for conservative remapping)
 
     def estimate_corners(lat, lon):
-        """
-        Estimate the corners of each grid cell for 2D curvilinear grids.
-        The corners are estimated by averaging the midpoints of neighboring cells.
+        """Cell corners for a 2-D curvilinear grid, CF order SW, SE, NE, NW.
+
+        Each corner is the centroid of the four cell centres meeting at it.
+        Boundary centres are extended by linear extrapolation (one ghost ring),
+        so that edge cells get their full width/height instead of collapsing
+        onto their own centres.
+
         Args:
             lat (np.array): 2D array of latitudes for cell midpoints.
             lon (np.array): 2D array of longitudes for cell midpoints.
         Returns:
-            lat_corners, lon_corners: 2D arrays of shape (nlat, nlon, 4) containing the estimated
-                                    latitude and longitude of each corner for each grid cell.
+            lat_corners, lon_corners: arrays of shape (ny, nx, 4) with the
+                                      latitude and longitude of each corner.
         """
-        nlat, nlon = lat.shape
-        lat_corners = np.zeros((nlat, nlon, 4))  # Initialize arrays for corners
-        lon_corners = np.zeros((nlat, nlon, 4))
 
-        # Internal cells
-        for i in range(0, nlat):
-            for j in range(0, nlon):
-                im1 = np.max([0, i - 1])
-                ip1 = np.min([nlat - 1, i + 1])
-                jm1 = np.max([0, j - 1])
-                jp1 = np.min([nlon - 1, j + 1])
+        def _pad(a):
+            ny, nx = a.shape
+            b = np.empty((ny + 2, nx + 2), dtype=float)
+            b[1:-1, 1:-1] = a
+            b[0, 1:-1] = 2.0 * a[0, :] - a[1, :]  # ghost row south
+            b[-1, 1:-1] = 2.0 * a[-1, :] - a[-2, :]  # ghost row north
+            b[:, 0] = 2.0 * b[:, 1] - b[:, 2]  # ghost col west
+            b[:, -1] = 2.0 * b[:, -2] - b[:, -3]  # ghost col east
+            return b
 
-                # Average to get the SW corner of the (i, j) cell
-                lat_corners[i, j, 0] = (
-                    lat[i, j] + lat[i, jm1] + lat[im1, j] + lat[im1, jm1]
-                ) / 4
-                lon_corners[i, j, 0] = (
-                    lon[i, j] + lon[i, jm1] + lon[im1, j] + lon[im1, jm1]
-                ) / 4
+        def _corners(a):
+            b = _pad(a)
+            # shared-corner array, shape (ny+1, nx+1)
+            c = 0.25 * (b[:-1, :-1] + b[1:, :-1] + b[:-1, 1:] + b[1:, 1:])
+            out = np.empty(a.shape + (4,), dtype=float)
+            out[..., 0] = c[:-1, :-1]  # SW
+            out[..., 1] = c[:-1, 1:]  # SE
+            out[..., 2] = c[1:, 1:]  # NE
+            out[..., 3] = c[1:, :-1]  # NW
+            return out
 
-                # Average to get the NW corner of the (i, j) cell
-                lat_corners[i, j, 1] = (
-                    lat[i, j] + lat[i, jp1] + lat[im1, j] + lat[im1, jp1]
-                ) / 4
-                lon_corners[i, j, 1] = (
-                    lon[i, j] + lon[i, jp1] + lon[im1, j] + lon[im1, jp1]
-                ) / 4
-
-                # Average to get the NE corner of the (i, j) cell
-                lat_corners[i, j, 2] = (
-                    lat[i, j] + lat[i, jp1] + lat[ip1, j] + lat[ip1, jp1]
-                ) / 4
-                lon_corners[i, j, 2] = (
-                    lon[i, j] + lon[i, jp1] + lon[ip1, j] + lon[ip1, jp1]
-                ) / 4
-
-                # Average to get the SE corner of the (i, j) cell
-                lat_corners[i, j, 3] = (
-                    lat[i, j] + lat[i, jm1] + lat[ip1, j] + lat[ip1, jm1]
-                ) / 4
-                lon_corners[i, j, 3] = (
-                    lon[i, j] + lon[i, jm1] + lon[ip1, j] + lon[ip1, jm1]
-                ) / 4
-
-        return lat_corners, lon_corners
+        return _corners(np.asarray(lat, float)), _corners(np.asarray(lon, float))
 
     lat_bounds, lon_bounds = estimate_corners(ds["lat"].values, ds["lon"].values)
 
