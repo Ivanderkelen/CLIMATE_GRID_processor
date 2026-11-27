@@ -22,8 +22,9 @@ import xarray as xr
 from datetime import date
 
 # User settings
-data_dir = "grid_files/"  # holds the pixel table dump; the netcdf is written here too
-pixel_table_file = data_dir + "CLIMAT_CLIMATE_GRID_PIXEL_13cols_FULL_DUMP_FIRSTALL--20260623_225142--20260623_225142.txt"
+grid_dir = "grid_files/"  # input: holds the pixel table dump
+data_dir = "/mnt/HDS_CLIMATE/CLIMATE/CLIMATE_GRID/"  # output: netcdf is written here
+pixel_table_file = grid_dir + "CLIMAT_CLIMATE_GRID_PIXEL_13cols_FULL_DUMP_FIRSTALL--20260623_225142--20260623_225142.txt"
 variable = "ALTITUDE"
 filename_out = f"{variable}_CLIMATE_GRID_static.nc"
 
