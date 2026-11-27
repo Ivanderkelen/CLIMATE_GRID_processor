@@ -14,6 +14,9 @@ June 2024
 - **`preprocess_CLIMATE_GRID.py`**:
   - Connects to the RMI Oracle database and downloads the CLIMATE_GRID data.
   - Converts and saves the data as a NetCDF file.
+- **`extract_altitude_CLIMATE_GRID.py`**:
+  - Reads the pixel altitude (`PIXEL_ALT`) from an ASCII dump of the `CLIMATE_GRID_PIXEL` table.
+  - Saves it as a static NetCDF (`ALTITUDE_CLIMATE_GRID_static.nc`) on the same grid as the output of `preprocess_CLIMATE_GRID.py`.
 - **`remap_CLIMATE_GRID_to_latlon.py`**:
   - Remaps the projected (raw) CLIMATE_GRID NetCDF data to a lat/lon grid.
   - The target grid can be user-defined within the script.
@@ -50,7 +53,14 @@ conda activate env_climategrid
    python preprocess_CLIMATE_GRID.py
     ```
 
-2. **Remapping the netcdf files**
+2. **(Optional) Extract the altitude:**
+Set the path to the `CLIMATE_GRID_PIXEL` table dump in [extract_altitude_CLIMATE_GRID.py](./extract_altitude_CLIMATE_GRID.py), then run:
+   ```bash
+   python extract_altitude_CLIMATE_GRID.py
+    ```
+   To remap it as well, add `"ALTITUDE"` to the variable list of the remap script.
+
+3. **Remapping the netcdf files**
 Open [remap_CLIMATE_GRID_to_latlon.py](./remap_CLIMATE_GRID_to_latlon.py) and do user adjustments (grid, metadata etc). Then execute the script: 
 
    ```bash
